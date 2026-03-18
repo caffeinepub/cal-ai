@@ -1,8 +1,9 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { FoodLogEntry, Profile } from "../backend";
 import { RecommendationTag } from "../backend";
 import { useActor } from "../hooks/useActor";
+import FoodDetailModal from "./FoodDetailModal";
 import FoodLogModal from "./FoodLogModal";
 
 interface Props {
@@ -78,7 +79,6 @@ function CalorieRing({
               <stop offset="100%" stopColor="#22C1C3" />
             </linearGradient>
           </defs>
-          {/* Track */}
           <circle
             cx="96"
             cy="96"
@@ -87,7 +87,6 @@ function CalorieRing({
             stroke="oklch(var(--secondary))"
             strokeWidth="14"
           />
-          {/* Progress */}
           <circle
             cx="96"
             cy="96"
@@ -135,6 +134,11 @@ export default function HomeTab({ profile }: Props) {
   const [totalCalories, setTotalCalories] = useState(0);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [pendingEntry, setPendingEntry] = useState<{
+    photoUrl: string;
+    label: string;
+  } | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<FoodLogEntry | null>(null);
 
   const loadData = useCallback(async () => {
     if (!backend) return;
@@ -174,6 +178,11 @@ export default function HomeTab({ profile }: Props) {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleSearching = (photoUrl: string) => {
+    setPendingEntry({ photoUrl, label: "Searching for ingredients..." });
+    setModalOpen(false);
   };
 
   const target = Number(profile.dailyCalorieTarget);
@@ -254,67 +263,100 @@ export default function HomeTab({ profile }: Props) {
           <h2 className="text-base font-semibold text-foreground">
             Today&apos;s Food Log
           </h2>
+
           {loading ? (
             <div className="flex flex-col gap-2">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="card-dark p-4 h-16 animate-pulse" />
               ))}
             </div>
-          ) : logs.length === 0 ? (
-            <div
-              data-ocid="home.empty_state"
-              className="card-dark p-8 flex flex-col items-center gap-2 text-center"
-            >
-              <span className="text-4xl">🍽️</span>
-              <p className="text-muted-foreground text-sm">
-                No food logged today. Tap the button below to add your first
-                meal!
-              </p>
-            </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {logs.map((log, i) => (
+              {/* Pending entry */}
+              {pendingEntry && (
                 <div
-                  key={Number(log.loggedTimestamp)}
-                  data-ocid={`food.item.${i + 1}`}
-                  className="card-dark p-4 flex items-center gap-3 animate-fade-in"
+                  data-ocid="food.loading_state"
+                  className="card-dark p-4 flex items-center gap-3 animate-pulse"
                 >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(34,193,195,0.2))",
-                    }}
-                  >
-                    🍴
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">
-                      {log.foodName}
+                  <img
+                    src={pendingEntry.photoUrl}
+                    alt="Pending food"
+                    className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Searching for ingredients
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <RecommendationBadge tag={log.recommendationTag} />
+                    <div className="flex items-center gap-1 mt-1">
+                      <Loader2 className="w-3 h-3 animate-spin text-brand-purple" />
                       <span className="text-xs text-muted-foreground">
-                        {formatTime(log.loggedTimestamp)}
+                        Analyzing nutrition...
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground">
-                      {Number(log.calories)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">cal</span>
-                    <button
-                      type="button"
-                      data-ocid={`food.delete_button.${i + 1}`}
-                      onClick={() => handleDelete(log.loggedTimestamp)}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
                 </div>
-              ))}
+              )}
+
+              {logs.length === 0 && !pendingEntry ? (
+                <div
+                  data-ocid="home.empty_state"
+                  className="card-dark p-8 flex flex-col items-center gap-2 text-center"
+                >
+                  <span className="text-4xl">🍽️</span>
+                  <p className="text-muted-foreground text-sm">
+                    No food logged today. Tap the button below to add your first
+                    meal!
+                  </p>
+                </div>
+              ) : (
+                logs.map((log, i) => (
+                  <button
+                    key={Number(log.loggedTimestamp)}
+                    type="button"
+                    data-ocid={`food.item.${i + 1}`}
+                    onClick={() => setSelectedEntry(log)}
+                    className="card-dark p-4 flex items-center gap-3 animate-fade-in w-full text-left hover:bg-secondary/60 transition-colors"
+                  >
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(34,193,195,0.2))",
+                      }}
+                    >
+                      🍴
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {log.foodName}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <RecommendationBadge tag={log.recommendationTag} />
+                        <span className="text-xs text-muted-foreground">
+                          {formatTime(log.loggedTimestamp)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-foreground">
+                        {Number(log.calories)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">cal</span>
+                      <button
+                        type="button"
+                        data-ocid={`food.delete_button.${i + 1}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(log.loggedTimestamp);
+                        }}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
           )}
         </div>
@@ -338,8 +380,15 @@ export default function HomeTab({ profile }: Props) {
         profile={profile}
         onFoodAdded={() => {
           setModalOpen(false);
+          setPendingEntry(null);
           loadData();
         }}
+        onSearching={handleSearching}
+      />
+
+      <FoodDetailModal
+        entry={selectedEntry}
+        onClose={() => setSelectedEntry(null)}
       />
     </div>
   );
