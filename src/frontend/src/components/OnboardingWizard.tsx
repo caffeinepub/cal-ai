@@ -77,6 +77,39 @@ export default function OnboardingWizard({ onComplete }: Props) {
 
   const TOTAL_STEPS = 8;
 
+  const STEP_TITLES = [
+    "Your Name",
+    "Basic Info",
+    "Your Goal",
+    "Gender",
+    "Exercise Frequency",
+    "Ingredients to Avoid",
+    "Calculating Your Plan",
+    "Your Daily Target",
+  ];
+
+  const STEP_SUBTITLES = [
+    "Enter your first and last name",
+    "Used to calculate your calorie needs",
+    "Set your calorie target direction",
+    "Affects your BMR calculation",
+    "Your activity level for TDEE",
+    "We'll flag foods with these",
+    "Based on Harris-Benedict formula",
+    "Personalized just for you",
+  ];
+
+  const canGoNext = (() => {
+    switch (step) {
+      case 0:
+        return firstName.trim() !== "" && lastName.trim() !== "";
+      case 1:
+        return birthday !== "" && weight !== "";
+      default:
+        return true;
+    }
+  })();
+
   const goNext = () => {
     if (step === 6) {
       const cal = calculateCalories({
@@ -444,28 +477,6 @@ export default function OnboardingWizard({ onComplete }: Props) {
     }
   };
 
-  const STEP_TITLES = [
-    "What's your name?",
-    "Tell us about yourself",
-    "What's your goal?",
-    "What's your gender?",
-    "How often do you exercise?",
-    "Any ingredients to avoid?",
-    "Calculating your plan...",
-    "Your daily calorie target",
-  ];
-
-  const STEP_SUBTITLES = [
-    "Let's personalize your experience",
-    "We use this to calculate your needs",
-    "This helps us set your calorie target",
-    "Affects BMR calculation",
-    "Activity level matters for TDEE",
-    "We'll flag foods with these ingredients",
-    "Based on Harris-Benedict formula",
-    "Personalized just for you",
-  ];
-
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-start px-5 pt-12 pb-8">
       <div className="w-full max-w-sm flex flex-col gap-6">
@@ -523,7 +534,8 @@ export default function OnboardingWizard({ onComplete }: Props) {
             type="button"
             data-ocid="onboarding.primary_button"
             onClick={goNext}
-            className="w-full h-14 rounded-full text-white font-semibold text-base transition-all duration-200 active:scale-95 mt-4"
+            disabled={!canGoNext}
+            className="w-full h-14 rounded-full text-white font-semibold text-base transition-all duration-200 active:scale-95 mt-4 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: "linear-gradient(135deg, #8B5CF6, #22C1C3)" }}
           >
             {step === 6 ? "Reveal My Goal ✨" : "Next →"}
